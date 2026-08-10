@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QRápido — credenciales en QR</title>
+<meta name="description" content="Convierte tu usuario y contraseña en un código QR para escanear en vez de digitar. Todo ocurre en tu navegador.">
+<meta property="og:title" content="QRápido — credenciales en QR">
+<meta property="og:description" content="Convierte tu usuario y contraseña en un código QR para escanear en vez de digitar.">
+<meta property="og:type" content="website">
+<meta name="robots" content="noindex, nofollow">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23106B3D'/%3E%3Crect x='7' y='7' width='18' height='18' fill='none' stroke='white' stroke-width='3.5'/%3E%3Crect x='13.5' y='13.5' width='5' height='5' fill='white'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --ink: #16171B;
+    --paper: #F6F7F4;
+    --panel: #FFFFFF;
+    --accent: #106B3D;
+    --accent-soft: #E4F1E9;
+    --line: #DEE1D9;
+    --muted: #6B6F66;
+    --mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--sans);
+    line-height: 1.5;
+    display: flex;
+    justify-content: center;
+    padding: 48px 20px;
+  }
+
+  main {
+    width: 100%;
+    max-width: 420px;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 4px;
+  }
+
+  .mark {
+    color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  h1 {
+    font-family: var(--mono);
+    font-size: 26px;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    margin: 0;
+  }
+
+  .desc {
+    color: var(--muted);
+    font-size: 14.5px;
+    margin: 14px 0 24px;
+  }
+
+  .aviso {
+    background: var(--accent-soft);
+    border: 1px solid var(--accent);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 13px;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+
+  .aviso strong { font-weight: 500; }
+
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 14px;
+    padding: 28px;
+  }
+
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+
+  .campo { margin-bottom: 18px; }
+
+  .pw-wrap {
+    position: relative;
+    display: flex;
+  }
+
+  input[type="text"],
+  input[type="password"] {
+    width: 100%;
+    font-family: var(--sans);
+    font-size: 15px;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 11px 12px;
+  }
+
+  .pw-wrap input { padding-right: 72px; }
+
+  input:focus {
+    outline: 2px solid var(--accent);
+    outline-offset: 1px;
+    border-color: var(--accent);
+  }
+
+  #togglePw {
+    position: absolute;
+    right: 6px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 0.04em;
+    padding: 6px 8px;
+    cursor: pointer;
+    border-radius: 6px;
+  }
+
+  #togglePw:focus { outline: 2px solid var(--accent); }
+  #togglePw:hover { color: var(--ink); }
+
+  .btn {
+    width: 100%;
+    font-family: var(--mono);
+    font-size: 14px;
+    letter-spacing: 0.03em;
+    padding: 13px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+  }
+
+  .btn:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .btn-primario {
+    background: var(--accent);
+    color: var(--paper);
+    margin-top: 4px;
+  }
+
+  .btn-primario:hover { background: #0d5a33; }
+
+  .btn-secundario {
+    background: var(--panel);
+    color: var(--ink);
+    border-color: var(--line);
+  }
+
+  .btn-secundario:hover { border-color: var(--accent); color: var(--accent); }
+
+  .error {
+    color: #A32D2D;
+    font-size: 13px;
+    margin: -6px 0 14px;
+  }
+
+  #resultado .card { text-align: center; }
+
+  #resultado canvas {
+    max-width: 100%;
+    height: auto;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 12px;
+    background: white;
+  }
+
+  .usuario-generado {
+    font-family: var(--mono);
+    font-size: 13px;
+    color: var(--muted);
+    margin: 14px 0 20px;
+  }
+
+  .acciones {
+    display: flex;
+    gap: 10px;
+  }
+
+  .otro {
+    display: block;
+    text-align: center;
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--muted);
+    background: none;
+    border: none;
+    text-decoration: underline;
+    cursor: pointer;
+    width: 100%;
+  }
+
+  footer {
+    margin-top: 28px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  footer a { color: var(--muted); }
+
+  [hidden] { display: none !important; }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .card { transition: opacity 0.15s ease; }
+  }
+
+  @media print {
+    body * { visibility: hidden; }
+    #resultado, #resultado * { visibility: visible; }
+    #resultado {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%;
+      padding: 40px;
+    }
+    #resultado .acciones, #resultado .otro { display: none !important; }
+    #resultado .card { border: none; }
+  }
+</style>
+</head>
+<body>
+<main>
+
+  <header>
+    <svg class="mark" width="30" height="30" viewBox="0 0 32 32" aria-hidden="true">
+      <rect x="1" y="1" width="30" height="30" rx="6" fill="none" stroke="currentColor" stroke-width="3.5"/>
+      <rect x="11.5" y="11.5" width="9" height="9" fill="currentColor"/>
+    </svg>
+    <h1>QRápido</h1>
+  </header>
+
+  <p class="desc">Convierte tus credenciales en un código QR: ahorrarás más tiempo escaneando que digitándolas a mano.</p>
+
+  <p class="aviso"><strong>No debes compartir tu QR con nadie.</strong> Equivale a tu contraseña impresa.</p>
+
+  <section id="formulario">
+    <form class="card" id="qrForm" novalidate>
+      <div class="campo">
+        <label for="usuario">Usuario</label>
+        <input type="text" id="usuario" name="usuario" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      </div>
+
+      <div class="campo">
+        <label for="contrasena">Contraseña</label>
+        <div class="pw-wrap">
+          <input type="password" id="contrasena" name="contrasena" autocomplete="new-password" required>
+          <button type="button" id="togglePw" aria-pressed="false">Mostrar</button>
+        </div>
+      </div>
+
+      <p class="error" id="errorMsg" hidden></p>
+
+      <button type="submit" class="btn btn-primario">Crear QR</button>
+    </form>
+  </section>
+
+  <section id="resultado" hidden>
+    <div class="card">
+      <canvas id="qrCanvas"></canvas>
+      <p class="usuario-generado" id="usuarioGenerado"></p>
+      <div class="acciones">
+        <button type="button" class="btn btn-secundario" id="descargarBtn">Descargar de nuevo</button>
+        <button type="button" class="btn btn-primario" id="imprimirBtn">Imprimir</button>
+      </div>
+    </div>
+    <button type="button" class="otro" id="otroBtn">Generar otro código</button>
+  </section>
+
+  <footer>
+    Generado 100% en tu navegador — tus credenciales nunca salen de este dispositivo.
+  </footer>
+
+</main>
+
+<script src="qrcode.min.js"></script>
+<script>
+(function () {
+  var form = document.getElementById('qrForm');
+  var usuarioInput = document.getElementById('usuario');
+  var passInput = document.getElementById('contrasena');
+  var toggleBtn = document.getElementById('togglePw');
+  var formSection = document.getElementById('formulario');
+  var resultSection = document.getElementById('resultado');
+  var canvas = document.getElementById('qrCanvas');
+  var usuarioGenerado = document.getElementById('usuarioGenerado');
+  var descargarBtn = document.getElementById('descargarBtn');
+  var imprimirBtn = document.getElementById('imprimirBtn');
+  var otroBtn = document.getElementById('otroBtn');
+  var errorMsg = document.getElementById('errorMsg');
+
+  var lastDataUrl = '';
+  var lastUsuario = '';
+
+  toggleBtn.addEventListener('click', function () {
+    var showing = passInput.type === 'text';
+    passInput.type = showing ? 'password' : 'text';
+    toggleBtn.textContent = showing ? 'Mostrar' : 'Ocultar';
+    toggleBtn.setAttribute('aria-pressed', String(!showing));
+  });
+
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    errorMsg.hidden = true;
+
+    var usuario = usuarioInput.value.trim();
+    var contrasena = passInput.value;
+
+    if (!usuario || !contrasena) {
+      errorMsg.textContent = 'Completa usuario y contraseña.';
+      errorMsg.hidden = false;
+      return;
+    }
+
+    var payload = usuario + '\t' + contrasena + '\n';
+
+    QRCode.toCanvas(canvas, payload, { errorCorrectionLevel: 'H', margin: 2, width: 260 }, function (err) {
+      if (err) {
+        errorMsg.textContent = 'No se pudo generar el QR. Intenta de nuevo.';
+        errorMsg.hidden = false;
+        return;
+      }
+
+      lastDataUrl = canvas.toDataURL('image/png');
+      lastUsuario = usuario;
+      usuarioGenerado.textContent = 'Usuario: ' + usuario;
+
+      usuarioInput.value = '';
+      passInput.value = '';
+
+      formSection.hidden = true;
+      resultSection.hidden = false;
+
+      descargar();
+      setTimeout(function () { window.print(); }, 300);
+    });
+  });
+
+  function descargar() {
+    if (!lastDataUrl) return;
+    var a = document.createElement('a');
+    a.href = lastDataUrl;
+    a.download = 'credencial-' + (lastUsuario || 'qr') + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  descargarBtn.addEventListener('click', descargar);
+  imprimirBtn.addEventListener('click', function () { window.print(); });
+
+  otroBtn.addEventListener('click', function () {
+    resultSection.hidden = true;
+    formSection.hidden = false;
+    usuarioInput.focus();
+  });
+})();
+</script>
+</body>
+</html>
