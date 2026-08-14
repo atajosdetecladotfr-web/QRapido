@@ -3,10 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>QRápido — credenciales en QR</title>
-<meta name="description" content="Convierte tu usuario y contraseña en un código QR para escanear en vez de digitar. Todo ocurre en tu navegador.">
-<meta property="og:title" content="QRápido — credenciales en QR">
-<meta property="og:description" content="Convierte tu usuario y contraseña en un código QR para escanear en vez de digitar.">
+<title>QRápido — credenciales y giftcards en QR</title>
+<meta name="description" content="Convierte tu usuario/contraseña o el número de tu giftcard en un código QR para escanear en vez de digitar. Todo ocurre en tu navegador.">
+<meta property="og:title" content="QRápido — credenciales y giftcards en QR">
+<meta property="og:description" content="Convierte tus datos en un código QR para escanear en vez de digitar.">
 <meta property="og:type" content="website">
 <meta name="robots" content="noindex, nofollow">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23106B3D'/%3E%3Crect x='7' y='7' width='18' height='18' fill='none' stroke='white' stroke-width='3.5'/%3E%3Crect x='13.5' y='13.5' width='5' height='5' fill='white'/%3E%3C/svg%3E">
@@ -62,11 +62,44 @@
     margin: 0;
   }
 
+  .tabs {
+    display: flex;
+    gap: 6px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 4px;
+    margin: 20px 0;
+  }
+
+  .tab {
+    flex: 1;
+    font-family: var(--mono);
+    font-size: 12.5px;
+    letter-spacing: 0.02em;
+    padding: 9px 10px;
+    border-radius: 7px;
+    border: none;
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+  }
+
+  .tab[aria-selected="true"] {
+    background: var(--accent);
+    color: var(--paper);
+  }
+
+  .tab:not([aria-selected="true"]):hover { color: var(--ink); }
+  .tab:focus { outline: 2px solid var(--accent); outline-offset: 2px; }
+
   .desc {
     color: var(--muted);
     font-size: 14.5px;
     margin: 14px 0 24px;
   }
+
+  .desc a { color: var(--accent); }
 
   .aviso {
     background: var(--accent-soft);
@@ -188,7 +221,7 @@
     background: white;
   }
 
-  .usuario-generado {
+  .resultado-etiqueta {
     font-family: var(--mono);
     font-size: 13px;
     color: var(--muted);
@@ -253,11 +286,15 @@
     <h1>QRápido</h1>
   </header>
 
-  <p class="desc">Convierte tus credenciales en un código QR: ahorrarás más tiempo escaneando que digitándolas a mano.</p>
+  <div class="tabs" role="tablist">
+    <button type="button" class="tab" id="tabCredenciales" role="tab" aria-selected="true" aria-controls="vistaCredenciales">Credenciales</button>
+    <button type="button" class="tab" id="tabGiftcard" role="tab" aria-selected="false" aria-controls="vistaGiftcard">Giftcard</button>
+  </div>
 
-  <p class="aviso"><strong>No debes compartir tu QR con nadie.</strong> Equivale a tu contraseña impresa.</p>
+  <section class="vista" id="vistaCredenciales" role="tabpanel">
+    <p class="desc">Convierte tus credenciales en un código QR: ahorrarás más tiempo escaneando que digitándolas a mano.</p>
+    <p class="aviso"><strong>No debes compartir tu QR con nadie.</strong> Equivale a tu contraseña impresa.</p>
 
-  <section id="formulario">
     <form class="card" id="qrForm" novalidate>
       <div class="campo">
         <label for="usuario">Usuario</label>
@@ -278,10 +315,26 @@
     </form>
   </section>
 
+  <section class="vista" id="vistaGiftcard" hidden role="tabpanel">
+    <p class="desc">Crea un QR con el número de tu giftcard. Puedes obtenerla en la página de <a href="https://newmarket-biggie.cba.com.py/login?next=/" target="_blank" rel="noopener noreferrer">Newmarket</a>.</p>
+    <p class="aviso"><strong>No debes compartir tu QR con nadie.</strong> Equivale al saldo de tu giftcard.</p>
+
+    <form class="card" id="giftcardForm" novalidate>
+      <div class="campo">
+        <label for="giftcard">Pega aquí tu número de giftcard</label>
+        <input type="text" id="giftcard" name="giftcard" autocomplete="off" autocapitalize="off" spellcheck="false" required>
+      </div>
+
+      <p class="error" id="errorMsgGiftcard" hidden></p>
+
+      <button type="submit" class="btn btn-primario">Crear QR</button>
+    </form>
+  </section>
+
   <section id="resultado" hidden>
     <div class="card">
       <canvas id="qrCanvas"></canvas>
-      <p class="usuario-generado" id="usuarioGenerado"></p>
+      <p class="resultado-etiqueta" id="resultadoEtiqueta"></p>
       <div class="acciones">
         <button type="button" class="btn btn-secundario" id="descargarBtn">Descargar de nuevo</button>
         <button type="button" class="btn btn-primario" id="imprimirBtn">Imprimir</button>
@@ -291,7 +344,7 @@
   </section>
 
   <footer>
-    Generado 100% en tu navegador — tus credenciales nunca salen de este dispositivo.
+    Generado 100% en tu navegador — tus datos nunca salen de este dispositivo.
   </footer>
 
 </main>
@@ -299,21 +352,92 @@
 <script src="qrcode.min.js"></script>
 <script>
 (function () {
+  // ---- Pestañas ----
+  var tabCredenciales = document.getElementById('tabCredenciales');
+  var tabGiftcard = document.getElementById('tabGiftcard');
+  var vistaCredenciales = document.getElementById('vistaCredenciales');
+  var vistaGiftcard = document.getElementById('vistaGiftcard');
+  var resultSection = document.getElementById('resultado');
+
+  var vistaActiva = vistaCredenciales;
+
+  function cambiarTab(tabActivo, tabInactivo, vistaNueva, vistaVieja) {
+    tabActivo.setAttribute('aria-selected', 'true');
+    tabInactivo.setAttribute('aria-selected', 'false');
+    vistaNueva.hidden = false;
+    vistaVieja.hidden = true;
+    resultSection.hidden = true;
+    vistaActiva = vistaNueva;
+  }
+
+  tabCredenciales.addEventListener('click', function () {
+    cambiarTab(tabCredenciales, tabGiftcard, vistaCredenciales, vistaGiftcard);
+  });
+  tabGiftcard.addEventListener('click', function () {
+    cambiarTab(tabGiftcard, tabCredenciales, vistaGiftcard, vistaCredenciales);
+  });
+
+  // ---- Resultado compartido (canvas, descarga, impresión) ----
+  var canvas = document.getElementById('qrCanvas');
+  var resultadoEtiqueta = document.getElementById('resultadoEtiqueta');
+  var descargarBtn = document.getElementById('descargarBtn');
+  var imprimirBtn = document.getElementById('imprimirBtn');
+  var otroBtn = document.getElementById('otroBtn');
+
+  var lastDataUrl = '';
+  var lastNombreArchivo = 'qr';
+
+  function sanear(texto) {
+    var limpio = texto.replace(/[^a-zA-Z0-9_-]+/g, '-').replace(/^-+|-+$/g, '');
+    return limpio.slice(0, 40);
+  }
+
+  function generarQR(payload, nombreArchivo, etiqueta, errorEl, vistaOrigen) {
+    errorEl.hidden = true;
+
+    QRCode.toCanvas(canvas, payload, { errorCorrectionLevel: 'H', margin: 2, width: 260 }, function (err) {
+      if (err) {
+        errorEl.textContent = 'No se pudo generar el QR. Intenta de nuevo.';
+        errorEl.hidden = false;
+        return;
+      }
+
+      lastDataUrl = canvas.toDataURL('image/png');
+      lastNombreArchivo = nombreArchivo;
+      resultadoEtiqueta.textContent = etiqueta;
+
+      vistaOrigen.hidden = true;
+      resultSection.hidden = false;
+
+      descargar();
+      setTimeout(function () { window.print(); }, 300);
+    });
+  }
+
+  function descargar() {
+    if (!lastDataUrl) return;
+    var a = document.createElement('a');
+    a.href = lastDataUrl;
+    a.download = lastNombreArchivo + '.png';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  descargarBtn.addEventListener('click', descargar);
+  imprimirBtn.addEventListener('click', function () { window.print(); });
+
+  otroBtn.addEventListener('click', function () {
+    resultSection.hidden = true;
+    vistaActiva.hidden = false;
+  });
+
+  // ---- Formulario: Credenciales ----
   var form = document.getElementById('qrForm');
   var usuarioInput = document.getElementById('usuario');
   var passInput = document.getElementById('contrasena');
   var toggleBtn = document.getElementById('togglePw');
-  var formSection = document.getElementById('formulario');
-  var resultSection = document.getElementById('resultado');
-  var canvas = document.getElementById('qrCanvas');
-  var usuarioGenerado = document.getElementById('usuarioGenerado');
-  var descargarBtn = document.getElementById('descargarBtn');
-  var imprimirBtn = document.getElementById('imprimirBtn');
-  var otroBtn = document.getElementById('otroBtn');
   var errorMsg = document.getElementById('errorMsg');
-
-  var lastDataUrl = '';
-  var lastUsuario = '';
 
   toggleBtn.addEventListener('click', function () {
     var showing = passInput.type === 'text';
@@ -324,7 +448,6 @@
 
   form.addEventListener('submit', function (e) {
     e.preventDefault();
-    errorMsg.hidden = true;
 
     var usuario = usuarioInput.value.trim();
     var contrasena = passInput.value;
@@ -336,46 +459,43 @@
     }
 
     var payload = usuario + '\t' + contrasena + '\n';
+    var nombreArchivo = 'credencial-' + (sanear(usuario) || 'qr');
 
-    QRCode.toCanvas(canvas, payload, { errorCorrectionLevel: 'H', margin: 2, width: 260 }, function (err) {
-      if (err) {
-        errorMsg.textContent = 'No se pudo generar el QR. Intenta de nuevo.';
-        errorMsg.hidden = false;
-        return;
-      }
+    usuarioInput.value = '';
+    passInput.value = '';
 
-      lastDataUrl = canvas.toDataURL('image/png');
-      lastUsuario = usuario;
-      usuarioGenerado.textContent = 'Usuario: ' + usuario;
-
-      usuarioInput.value = '';
-      passInput.value = '';
-
-      formSection.hidden = true;
-      resultSection.hidden = false;
-
-      descargar();
-      setTimeout(function () { window.print(); }, 300);
-    });
+    generarQR(payload, nombreArchivo, 'Usuario: ' + usuario, errorMsg, vistaCredenciales);
   });
 
-  function descargar() {
-    if (!lastDataUrl) return;
-    var a = document.createElement('a');
-    a.href = lastDataUrl;
-    a.download = 'credencial-' + (lastUsuario || 'qr') + '.png';
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
+  // ---- Formulario: Giftcard ----
+  var giftcardForm = document.getElementById('giftcardForm');
+  var giftcardInput = document.getElementById('giftcard');
+  var errorMsgGiftcard = document.getElementById('errorMsgGiftcard');
+
+  function enmascararGiftcard(num) {
+    var limpio = num.replace(/\s+/g, '');
+    if (limpio.length > 4) return '•••• ' + limpio.slice(-4);
+    return '••••';
   }
 
-  descargarBtn.addEventListener('click', descargar);
-  imprimirBtn.addEventListener('click', function () { window.print(); });
+  giftcardForm.addEventListener('submit', function (e) {
+    e.preventDefault();
 
-  otroBtn.addEventListener('click', function () {
-    resultSection.hidden = true;
-    formSection.hidden = false;
-    usuarioInput.focus();
+    var numero = giftcardInput.value.trim();
+
+    if (!numero) {
+      errorMsgGiftcard.textContent = 'Pega el número de tu giftcard.';
+      errorMsgGiftcard.hidden = false;
+      return;
+    }
+
+    var payload = numero + '\n';
+    var nombreArchivo = 'giftcard-' + Date.now();
+    var etiqueta = 'Giftcard: ' + enmascararGiftcard(numero);
+
+    giftcardInput.value = '';
+
+    generarQR(payload, nombreArchivo, etiqueta, errorMsgGiftcard, vistaGiftcard);
   });
 })();
 </script>
